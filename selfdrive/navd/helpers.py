@@ -163,7 +163,22 @@ def parse_banner_instructions(banners: Any, distance_to_maneuver: float = 0.0) -
     instruction['maneuverType'] = p['type']
   if field_valid(p, 'modifier'):
     instruction['maneuverModifier'] = p['modifier']
-
+  if field_valid(p, 'degrees'):
+    if p['type'] == 'roundabout' or p['type'] == 'rotary':
+      directions = [
+        '',     # 0 or 360
+        'slight_right', # 45
+        'right',        # 90
+        'tight_right',  # 135
+        'straight',     # 180
+        'slight_left',  # 225
+        'left',         # 270
+        'tight_left'    # 315
+      ]
+      deg = (p['degrees'] + 360) % 360
+      i = (deg + 22) // 45 % 8
+      instruction['maneuverModifier'] = directions[i]
+      
   # Secondary
   if field_valid(current_banner, 'secondary'):
     instruction['maneuverSecondaryText'] = current_banner['secondary']['text']
