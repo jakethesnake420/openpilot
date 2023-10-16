@@ -6,6 +6,7 @@ from abc import abstractmethod, ABC
 from typing import Any, Dict, Optional, Tuple, List, Callable
 
 from cereal import car
+from cereal.car import CarParams, CarState, CarControl
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.conversions import Conversions as CV
 from openpilot.common.kalman.simple_kalman import KF1D, get_kalman_gain
@@ -29,7 +30,6 @@ FRICTION_THRESHOLD = 0.3
 TORQUE_PARAMS_PATH = os.path.join(BASEDIR, 'selfdrive/car/torque_data/params.yaml')
 TORQUE_OVERRIDE_PATH = os.path.join(BASEDIR, 'selfdrive/car/torque_data/override.yaml')
 TORQUE_SUBSTITUTE_PATH = os.path.join(BASEDIR, 'selfdrive/car/torque_data/substitute.yaml')
-
 
 def get_torque_params(candidate):
   with open(TORQUE_SUBSTITUTE_PATH) as f:
@@ -122,7 +122,7 @@ class CarInterfaceBase(ABC):
     pass
 
   @staticmethod
-  def get_steer_feedforward_default(desired_angle, v_ego):
+  def get_steer_feedforward_default(desired_angle: float, v_ego: float) -> float:
     # Proportional to realigning tire momentum: lateral acceleration.
     # TODO: something with lateralPlan.curvatureRates
     return desired_angle * (v_ego**2)
@@ -141,8 +141,8 @@ class CarInterfaceBase(ABC):
 
   # returns a set of default params to avoid repetition in car specific params
   @staticmethod
-  def get_std_params(candidate):
-    ret = car.CarParams.new_message()
+  def get_std_params(candidate: str) -> CarParams:
+    ret:CarParams = car.CarParams.new_message()
     ret.carFingerprint = candidate
 
     # Car docs fields
@@ -178,9 +178,9 @@ class CarInterfaceBase(ABC):
     return ret
 
   @staticmethod
-  def configure_torque_tune(candidate, tune, steering_angle_deadzone_deg=0.0, use_steering_angle=True):
+  def configure_torque_tune(candidate, tune: CarParams.LateralTuning, steering_angle_deadzone_deg=0.0, use_steering_angle=True):
     params = get_torque_params(candidate)
-
+    
     tune.init('torque')
     tune.torque.useSteeringAngle = use_steering_angle
     tune.torque.kp = 1.0
