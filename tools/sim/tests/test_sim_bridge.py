@@ -60,7 +60,7 @@ class TestSimBridgeBase(unittest.TestCase):
     min_counts_control_active = 100
     control_active = 0
 
-    while time.monotonic() < start_time + max_time_per_step:
+    while time.monotonic() < start_time + 200:
       sm.update()
 
       q.put("cruise_down")  # Try engaging

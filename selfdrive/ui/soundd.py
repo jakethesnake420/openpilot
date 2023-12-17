@@ -136,7 +136,7 @@ class Soundd:
   def soundd_thread(self):
     # sounddevice must be imported after forking processes
     import sounddevice as sd
-
+    print(sd.query_devices())
     sm = messaging.SubMaster(['controlsState', 'microphone'])
 
     with self.get_stream(sd) as stream:

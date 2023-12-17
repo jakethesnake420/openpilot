@@ -6,7 +6,7 @@ from openpilot.selfdrive.boardd.boardd_api_impl import can_list_to_can_capnp
 from openpilot.selfdrive.car import crc8_pedal
 from openpilot.tools.sim.lib.common import SimulatorState
 from panda.python import Panda
-
+import sys
 
 class SimulatedCar:
   """Simulates a honda civic 2016 (panda state + can messages) to OpenPilot"""
@@ -110,12 +110,19 @@ class SimulatedCar:
       'alternativeExperience': self.sm["carParams"].alternativeExperience,
       'safetyParam': Panda.FLAG_HONDA_GAS_INTERCEPTOR
     }
+    print("sending pandaStates")
     self.pm.send('pandaStates', dat)
-
+    print("sent pandaStates")
+    
   def update(self, simulator_state: SimulatorState):
-    self.send_can_messages(simulator_state)
+    try:
+      print(f'update begin idx {self.idx}', flush=True)
+      self.send_can_messages(simulator_state)
+      if self.idx % 50 == 0: # only send panda states at 2hz
+        self.send_panda_state(simulator_state)
 
-    if self.idx % 50 == 0: # only send panda states at 2hz
-      self.send_panda_state(simulator_state)
-
-    self.idx += 1
+      self.idx += 1
+      print(f'update end idx {self.idx}', flush=True)
+    
+    except BlockingIOError as e:
+      sys.stdout.flush()

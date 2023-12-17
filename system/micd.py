@@ -89,7 +89,7 @@ class Mic:
   def micd_thread(self):
     # sounddevice must be imported after forking processes
     import sounddevice as sd
-
+    print(sd.query_devices())
     with self.get_stream(sd) as stream:
       cloudlog.info(f"micd stream started: {stream.samplerate=} {stream.channels=} {stream.dtype=} {stream.device=}, {stream.blocksize=}")
       while True:

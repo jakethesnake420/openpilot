@@ -22,6 +22,7 @@ def rk_loop(function, hz, exit_event: threading.Event):
   while not exit_event.is_set():
     function()
     rk.keep_time()
+  print("Exit event is set")
 
 
 class SimulatorBridge(ABC):
@@ -178,8 +179,8 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
         self.world.tick()
         self.world.read_cameras()
 
-      if self.rk.frame % 25 == 0:
-        self.print_status()
+      #if self.rk.frame % 200 == 0:
+        #self.print_status()
 
       self.started = True
 
