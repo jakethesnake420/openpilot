@@ -40,6 +40,7 @@ streaming_config = speech.StreamingRecognitionConfig(
     single_utterance=True,
     interim_results=True,
     enable_voice_activity_events=False,
+    # figure out timeout setting
 )
 
 def microphone_data_collector():
