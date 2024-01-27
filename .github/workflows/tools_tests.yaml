@@ -90,7 +90,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-         run: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,
+        run: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,
               0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,
               0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,
               0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49]
@@ -98,26 +98,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - name: Download Artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: openpilot-build
-          path: path/to/openpilot/build
+      - run: git lfs pull
+      - uses: ./.github/workflows/setup-with-retry
       - name: Download and Load Docker Images
         uses: actions/download-artifact@v3
         with:
           name: docker-images
           path: $GITHUB_WORKSPACE/docker_images
       - run: |
-            docker load < $GITHUB_WORKSPACE/docker_images/images.tar
-      - name: Download and Use Openpilot Build
+          docker load < $GITHUB_WORKSPACE/docker_images/images.tar
+      - name: Download Openpilot Build
         uses: actions/download-artifact@v3
         with:
           name: openpilot-build
           path: $GITHUB_WORKSPACE/openpilot_build
-          run: |
-            # Use the Openpilot build artifacts from $GITHUB_WORKSPACE/openpilot_build
-  
+      - run: |
+          docker run --shm-size 1G -v $GITHUB_WORKSPACE/openpilot_build:/tmp/openpilot -w /tmp/openpilot -e PYTHONPATH=/tmp/openpilot -v $GITHUB_WORKSPACE/.ci_cache/scons_cache:/tmp/scons_cache -v $GITHUB_WORKSPACE/.ci_cache/comma_download_cache:/tmp/comma_download_cache -v $GITHUB_WORKSPACE/.ci_cache/openpilot_cache:/tmp/openpilot_cache ${{ needs.build-docker.outputs.docker-cl-image }} "python -m metadrive.pull_asset && source selfdrive/test/setup_xvfb.sh && source selfdrive/test/setup_vsound.sh && CI=1 tools/sim/tests/test_metadrive_bridge.py"
 
   devcontainer:
     name: devcontainer
