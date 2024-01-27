@@ -27,6 +27,7 @@ class TestSimBridgeBase(unittest.TestCase):
     sm = messaging.SubMaster(['controlsState', 'onroadEvents', 'managerState'])
     q = Queue()
     bridge = self.create_bridge()
+    
     bridge.started = Value('b', False)
     p_bridge = bridge.run(q, retries=10)
     self.processes.append(p_bridge)
@@ -54,7 +55,7 @@ class TestSimBridgeBase(unittest.TestCase):
         break
 
     self.assertTrue(no_car_events_issues_once,
-                    f"Failed because no messages received, or CarEvents '{car_event_issues}' or processes not running '{not_running}'")
+                    f"Failed because no messages received, or CarEvents '{car_event_issues}' or processes not running '{not_running}, {p_bridge.exitcode=}'")
 
     start_time = time.monotonic()
     min_counts_control_active = 100
