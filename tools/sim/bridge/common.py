@@ -125,7 +125,6 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
 
         # Read manual controls
         print("reading queue")
-        q.join_thread():
         if not q.empty():
           print("queue not empty")
           message = q.get()
