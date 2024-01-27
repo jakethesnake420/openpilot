@@ -43,7 +43,6 @@ class SimulatorBridge(ABC):
     self._keep_alive = True
     self.started = False
     signal.signal(signal.SIGTERM, self._on_shutdown)
-    self._exit = threading.Event()
     self.simulator_state = SimulatorState()
 
     self.world: Optional[World] = None
@@ -124,8 +123,11 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
       throttle_manual = steer_manual = brake_manual = 0.
 
       # Read manual controls
+      print("reading queue")
       if not q.empty():
+        print("queue not empty")
         message = q.get()
+        print("qot from queue")
         m = message.split('_')
         if m[0] == "steer":
           steer_manual = float(m[1])
@@ -193,3 +195,5 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
       self.started = True
 
       self.rk.keep_time()
+    
+    print(f'{self._keep_alive=}')
