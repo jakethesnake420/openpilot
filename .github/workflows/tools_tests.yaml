@@ -24,103 +24,14 @@ env:
   RUN_CL: docker run --shm-size 1G -v $GITHUB_WORKSPACE:/tmp/openpilot -w /tmp/openpilot -e PYTHONPATH=/tmp/openpilot -e NUM_JOBS -e JOB_ID -e GITHUB_ACTION -e GITHUB_REF -e GITHUB_HEAD_REF -e GITHUB_SHA -e GITHUB_REPOSITORY -e GITHUB_RUN_ID -v $GITHUB_WORKSPACE/.ci_cache/scons_cache:/tmp/scons_cache -v $GITHUB_WORKSPACE/.ci_cache/comma_download_cache:/tmp/comma_download_cache -v $GITHUB_WORKSPACE/.ci_cache/openpilot_cache:/tmp/openpilot_cache $CL_BASE_IMAGE /bin/bash -c
 
 
-jobs:  
-  build-docker:
-    name: Build Docker Images
-    runs-on: ubuntu-20.04
-    outputs:
-      docker-base-image: ${{ steps.docker_base.outputs.digest }}
-      docker-cl-image: ${{ steps.docker_cl.outputs.digest }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - run: git lfs pull
-      - uses: ./.github/workflows/setup-with-retry
-      - name: Build base docker image
-        id: docker_base
-        run: |
-          eval "$BUILD"
-          echo "::set-output name=digest::$(docker images --no-trunc | grep 'base-image' | awk '{print $3}')"
-      - name: Build base cl image
-        id: docker_cl
-        run: |
-          eval "$BUILD_CL"
-          echo "::set-output name=digest::$(docker images --no-trunc | grep 'cl-image' | awk '{print $3}')"
-      - name: Save and Upload Docker Images
-        run: |
-          mkdir -p $GITHUB_WORKSPACE/docker_images
-          docker save $BASE_IMAGE $CL_BASE_IMAGE > $GITHUB_WORKSPACE/docker_images/images.tar
-          gzip $GITHUB_WORKSPACE/docker_images/images.tar
-      - uses: actions/upload-artifact@v3
-        with:
-          name: docker-images
-          path: $GITHUB_WORKSPACE/docker_images/images.tar.gz
-
-  build-openpilot:
-    name: Build Openpilot
-    needs: build-docker
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - run: git lfs pull
-      - uses: ./.github/workflows/setup-with-retry
-      - name: Load Docker Images
-        run: |
-          docker load < path/to/docker/base-image.tar
-          docker load < path/to/docker/cl-image.tar
-      - name: Build Openpilot
-        run: |
-          docker run ${{ needs.build-docker.outputs.docker-base-image }} "scons -j$(nproc)"
-      - name: Save and Upload Openpilot Build
-        run: |
-            mkdir -p $GITHUB_WORKSPACE/openpilot_build
-            cp -r [Openpilot build directory] $GITHUB_WORKSPACE/openpilot_build
-      - uses: actions/upload-artifact@v3
-        with:
-          name: openpilot-build
-          path: $GITHUB_WORKSPACE/openpilot_build
-
-  simulator_bridge:
-    name: Simulator Bridge Test
-    needs: [build-docker, build-openpilot]
-    runs-on: ubuntu-20.04
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        run: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,
-              0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,
-              0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,
-              0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - run: git lfs pull
-      - uses: ./.github/workflows/setup-with-retry
-      - name: Download and Load Docker Images
-        uses: actions/download-artifact@v3
-        with:
-          name: docker-images
-          path: $GITHUB_WORKSPACE/docker_images
-      - run: |
-          docker load < $GITHUB_WORKSPACE/docker_images/images.tar
-      - name: Download Openpilot Build
-        uses: actions/download-artifact@v3
-        with:
-          name: openpilot-build
-          path: $GITHUB_WORKSPACE/openpilot_build
-      - run: |
-          docker run --shm-size 1G -v $GITHUB_WORKSPACE/openpilot_build:/tmp/openpilot -w /tmp/openpilot -e PYTHONPATH=/tmp/openpilot -v $GITHUB_WORKSPACE/.ci_cache/scons_cache:/tmp/scons_cache -v $GITHUB_WORKSPACE/.ci_cache/comma_download_cache:/tmp/comma_download_cache -v $GITHUB_WORKSPACE/.ci_cache/openpilot_cache:/tmp/openpilot_cache ${{ needs.build-docker.outputs.docker-cl-image }} "python -m metadrive.pull_asset && source selfdrive/test/setup_xvfb.sh && source selfdrive/test/setup_vsound.sh && CI=1 tools/sim/tests/test_metadrive_bridge.py"
-  
+jobs:
   simulator_bridge2:
     strategy:
       fail-fast: false
       matrix:
         run: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,
+              0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,
+              0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,
               0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49]
     name: simulator bridge test
     runs-on: ubuntu-20.04
