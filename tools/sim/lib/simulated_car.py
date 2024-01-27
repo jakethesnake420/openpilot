@@ -123,6 +123,5 @@ class SimulatedCar:
 
       self.idx += 1
       print(f'update end idx {self.idx}', flush=True)
-    
-    except BlockingIOError as e:
-      sys.stdout.flush()
+    except Exception as e:
+      print(e, flush=True)

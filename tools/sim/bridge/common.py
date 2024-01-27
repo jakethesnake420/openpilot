@@ -18,7 +18,7 @@ from openpilot.tools.sim.lib.keyboard_ctrl import KEYBOARD_HELP
 
 
 def rk_loop(function, hz, exit_event: threading.Event):
-  rk = Ratekeeper(hz, None)
+  rk = Ratekeeper(hz, 0)
   while not exit_event.is_set():
     function()
     rk.keep_time()
