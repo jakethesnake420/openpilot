@@ -18,7 +18,7 @@ from openpilot.tools.sim.lib.keyboard_ctrl import KEYBOARD_HELP
 
 
 def rk_loop(function, hz, exit_event: threading.Event):
-  rk = Ratekeeper(hz, 0)
+  rk = Ratekeeper(hz, None)
   while not exit_event.is_set():
     function()
     rk.keep_time()
@@ -39,6 +39,7 @@ class SimulatorBridge(ABC):
     self.high_quality = arguments.high_quality
 
     self._exit_event = threading.Event()
+    self.submaster_event = threading.Event()
     self._threads = []
     self._keep_alive = True
     self.started = False
@@ -101,9 +102,10 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
       self.simulated_car = SimulatedCar()
       self.simulated_sensors = SimulatedSensors(self.dual_camera)
 
-      self.simulated_car_thread = threading.Thread(target=rk_loop, args=(functools.partial(self.simulated_car.update, self.simulator_state),
+      self.simulated_car_thread = threading.Thread(target=rk_loop, args=(functools.partial(self.simulated_car.update, self.simulator_state, self.submaster_event),
                                                                           100, self._exit_event))
       self.simulated_car_thread.start()
+      self.submaster_event.set()
 
       self.simulated_camera_thread = threading.Thread(target=rk_loop, args=(functools.partial(self.simulated_sensors.send_camera_images, self.world),
                                                                           20, self._exit_event))
@@ -164,8 +166,9 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
         steer_manual = steer_manual * -40
 
         # Update openpilot on current sensor state
+        
         self.simulated_sensors.update(self.simulator_state, self.world)
-
+        self.submaster_event.clear()
         self.simulated_car.sm.update(0)
         controlsState = self.simulated_car.sm['controlsState']
         self.simulator_state.is_engaged = controlsState.active
@@ -196,6 +199,7 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
         self.started = True
 
         self.rk.keep_time()
+        self.submaster_event.set()
       
         print(f'{self._keep_alive=}')
     except Exception as e:

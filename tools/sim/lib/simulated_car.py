@@ -6,7 +6,7 @@ from openpilot.selfdrive.boardd.boardd_api_impl import can_list_to_can_capnp
 from openpilot.selfdrive.car import crc8_pedal
 from openpilot.tools.sim.lib.common import SimulatorState
 from panda.python import Panda
-import sys
+import threading
 
 class SimulatedCar:
   """Simulates a honda civic 2016 (panda state + can messages) to OpenPilot"""
@@ -98,7 +98,8 @@ class SimulatedCar:
 
     self.pm.send('can', can_list_to_can_capnp(msg))
 
-  def send_panda_state(self, simulator_state):
+  def send_panda_state(self, simulator_state, submaster_event: threading.Event):
+    submaster_event.wait()
     self.sm.update(0)
     dat = messaging.new_message('pandaStates', 1)
     dat.valid = True
@@ -114,12 +115,12 @@ class SimulatedCar:
     self.pm.send('pandaStates', dat)
     print("sent pandaStates")
     
-  def update(self, simulator_state: SimulatorState):
+  def update(self, simulator_state: SimulatorState, submaster_event):
     try:
       print(f'update begin idx {self.idx}', flush=True)
       self.send_can_messages(simulator_state)
       if self.idx % 50 == 0: # only send panda states at 2hz
-        self.send_panda_state(simulator_state)
+        self.send_panda_state(simulator_state, submaster_event)
 
       self.idx += 1
       print(f'update end idx {self.idx}', flush=True)
