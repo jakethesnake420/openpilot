@@ -63,7 +63,6 @@ class TestSimBridgeBase(unittest.TestCase):
 
     while time.monotonic() < start_time + 200:
       sm.update()
-
       q.put("cruise_down")  # Try engaging
 
       if sm.all_alive() and sm['controlsState'].active:

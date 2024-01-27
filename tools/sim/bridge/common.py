@@ -7,6 +7,7 @@ from multiprocessing import Process, Queue
 from abc import ABC, abstractmethod
 from typing import Optional
 
+import cereal.messaging as messaging
 from openpilot.common.params import Params
 from openpilot.common.numpy_fast import clip
 from openpilot.common.realtime import Ratekeeper
@@ -22,8 +23,11 @@ def rk_loop(function, hz, exit_event: threading.Event):
   rk = Ratekeeper(hz, None)
   while not exit_event.is_set():
     function()
-    rk.keep_time()
-    print("rk_loop")
+    #rk.keep_time()
+    #print("rk_loop")
+    #if rk.frame == 300:
+      #while 1:
+        #pass
   print("Exit event is set")
 
 
@@ -46,6 +50,8 @@ class SimulatorBridge(ABC):
     self.started = False
     signal.signal(signal.SIGTERM, self._on_shutdown)
     self.simulator_state = SimulatorState()
+    self.sm = messaging.SubMaster(['carControl', 'controlsState', 'carParams'])
+
 
     self.world: Optional[World] = None
 
@@ -131,7 +137,7 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
         if not q.empty():
           print("queue not empty")
           message = q.get()
-          print("qot from queue")
+          #print("qot from queue")
           m = message.split('_')
           if m[0] == "steer":
             steer_manual = float(m[1])
@@ -167,16 +173,16 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
         steer_manual = steer_manual * -40
 
         # Update openpilot on current sensor state
-        print("self.simulated_sensors.update")
+        #print("self.simulated_sensors.update")
         self.simulated_sensors.update(self.simulator_state, self.world)
-        self.submaster_event.clear()
-        print(f'self.simulated_car.sm.update(0) time {time.perf_counter()}')
-        self.simulated_car.sm.update(0)
+        #self.submaster_event.clear()
+        #print(f'self.simulated_car.sm.update(0) time {time.perf_counter()}')
+        #if self.simulated_car.sm.updated['controlsState']:
         controlsState = self.simulated_car.sm['controlsState']
         self.simulator_state.is_engaged = controlsState.active
 
         if self.simulator_state.is_engaged:
-          print("self.simulator_state.is_engaged")
+          #print("self.simulator_state.is_engaged")
           throttle_op = clip(self.simulated_car.sm['carControl'].actuators.accel / 1.6, 0.0, 1.0)
           brake_op = clip(-self.simulated_car.sm['carControl'].actuators.accel / 4.0, 0.0, 1.0)
           steer_op = self.simulated_car.sm['carControl'].actuators.steeringAngleDeg
@@ -184,29 +190,29 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
           self.past_startup_engaged = True
         elif not self.past_startup_engaged and controlsState.engageable:
           self.simulator_state.cruise_button = CruiseButtons.DECEL_SET # force engagement on startup
-          print("not self.past_startup_engaged and controlsState.engageable:")
+          #print("not self.past_startup_engaged and controlsState.engageable:")
         
         throttle_out = throttle_op if self.simulator_state.is_engaged else throttle_manual
         brake_out = brake_op if self.simulator_state.is_engaged else brake_manual
         steer_out = steer_op if self.simulator_state.is_engaged else steer_manual
-        print("self.world.apply_controls")
+        #print("self.world.apply_controls")
         self.world.apply_controls(steer_out, throttle_out, brake_out)
         self.world.read_sensors(self.simulator_state)
-        print("self.world.read_sensors")
+        #print("self.world.read_sensors")
 
         if self.rk.frame % self.TICKS_PER_FRAME == 0:
-          print("read_cameras")
+          #print("read_cameras")
           self.world.tick()
           self.world.read_cameras()
 
-        if self.rk.frame % 200 == 0:
-          self.print_status()
+        #if self.rk.frame % 200 == 0:
+          #self.print_status()
 
         self.started = True
 
-        self.rk.keep_time()
-        self.submaster_event.set()
+        #self.rk.keep_time()
+        #self.submaster_event.set()
       
-        print(f'{self._keep_alive=}')
+        #print(f'{self._keep_alive=}')
     except Exception as e:
       print(e, flush=True)

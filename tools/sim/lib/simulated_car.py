@@ -7,6 +7,7 @@ from openpilot.selfdrive.car import crc8_pedal
 from openpilot.tools.sim.lib.common import SimulatorState
 from panda.python import Panda
 import threading
+import time
 
 class SimulatedCar:
   """Simulates a honda civic 2016 (panda state + can messages) to OpenPilot"""
@@ -99,7 +100,8 @@ class SimulatedCar:
     self.pm.send('can', can_list_to_can_capnp(msg))
 
   def send_panda_state(self, simulator_state, submaster_event: threading.Event):
-    submaster_event.wait()
+    #submaster_event.wait()
+    #print(f'panda state update{time.perf_counter()}')
     self.sm.update(0)
     dat = messaging.new_message('pandaStates', 1)
     dat.valid = True
@@ -111,13 +113,13 @@ class SimulatedCar:
       'alternativeExperience': self.sm["carParams"].alternativeExperience,
       'safetyParam': Panda.FLAG_HONDA_GAS_INTERCEPTOR
     }
-    print("sending pandaStates")
+    #print("sending pandaStates")
     self.pm.send('pandaStates', dat)
-    print("sent pandaStates")
+    #print("sent pandaStates")
     
   def update(self, simulator_state: SimulatorState, submaster_event):
     try:
-      print(f'update begin idx {self.idx}', flush=True)
+      #print(f'update begin idx {self.idx}', flush=True)
       self.send_can_messages(simulator_state)
       if self.idx % 50 == 0: # only send panda states at 2hz
         self.send_panda_state(simulator_state, submaster_event)
