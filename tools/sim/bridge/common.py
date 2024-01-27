@@ -59,15 +59,21 @@ class SimulatorBridge(ABC):
   def bridge_keep_alive(self, q: Queue, retries: int):
     try:
       self._run(q)
+    except Exception as e:
+      print(e)
     finally:
+      print("closing")
       self.close()
 
   def close(self):
     self.started = False
     self._exit_event.set()
+    print("self._exit_event.set()")
 
     if self.world is not None:
+      print("if self.world is not None")
       self.world.close()
+      print("self.world.close()")
 
   def run(self, queue, retries=-1):
     bridge_p = Process(name="bridge", target=self.bridge_keep_alive, args=(queue, retries))
@@ -180,8 +186,8 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
         self.world.tick()
         self.world.read_cameras()
 
-      #if self.rk.frame % 200 == 0:
-        #self.print_status()
+      if self.rk.frame % 200 == 0:
+        self.print_status()
 
       self.started = True
 

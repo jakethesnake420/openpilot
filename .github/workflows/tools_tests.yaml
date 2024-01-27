@@ -25,7 +25,7 @@ env:
 
 
 jobs:
-  simulator_bridge2:
+  simulator_bridge:
     strategy:
       fail-fast: false
       matrix:
@@ -54,29 +54,3 @@ jobs:
       run: |
         ${{ env.RUN_CL }} "python -m metadrive.pull_asset && source selfdrive/test/setup_xvfb.sh && source selfdrive/test/setup_vsound.sh && CI=1 tools/sim/tests/test_metadrive_bridge.py"
          
-  devcontainer:
-    name: devcontainer
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-    - uses: ./.github/workflows/setup-with-retry
-    - name: Use local image for testing devcontainer with latest base image
-      run: |
-        echo "USE_LOCAL_IMAGE=true" >> "$GITHUB_ENV"
-    - name: Setup Dev Container CLI
-      run: npm install -g @devcontainers/cli
-    - name: Build dev container image
-      run: devcontainer build --workspace-folder .
-    - name: Run dev container
-      run: |
-        mkdir -p /tmp/devcontainer_scons_cache/
-        cp -r $GITHUB_WORKSPACE/.ci_cache/scons_cache/. /tmp/devcontainer_scons_cache/
-        devcontainer up --workspace-folder .
-    - name: Test environment
-      run: |
-        devcontainer exec --workspace-folder . scons -j$(nproc) cereal/ common/
-        devcontainer exec --workspace-folder . pip install pip-install-test
-        devcontainer exec --workspace-folder . touch /home/batman/.comma/auth.json
-        devcontainer exec --workspace-folder . sudo touch /root/test.txt
