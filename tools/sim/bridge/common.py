@@ -51,6 +51,7 @@ class SimulatorBridge(ABC):
     self.past_startup_engaged = False
 
   def _on_shutdown(self, signal, frame):
+    print("SIGTERM recieved")
     self.shutdown()
 
   def shutdown(self):
