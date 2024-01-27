@@ -197,6 +197,6 @@ Ignition: {self.simulator_state.ignition} Engaged: {self.simulator_state.is_enga
 
         self.rk.keep_time()
       
-      print(f'{self._keep_alive=}')
+        print(f'{self._keep_alive=}')
     except Exception as e:
       print(e, flush=True)
