@@ -22,6 +22,7 @@ def rk_loop(function, hz, exit_event: threading.Event):
   while not exit_event.is_set():
     function()
     rk.keep_time()
+    print("rk_loop")
   print("Exit event is set")
 
 
