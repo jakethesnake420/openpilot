@@ -1,7 +1,0 @@
-#!/bin/sh
-
-if [ -f /TICI ] && [ ! -f qt/text ]; then
-  cp qt/text_larch64 qt/text
-fi
-
-exec ./qt/text "$1"
