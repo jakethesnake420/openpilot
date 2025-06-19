@@ -23,6 +23,7 @@ public:
   int put_frame(VisionBuf *input_frame);
   int get_frame(unsigned char **linear_data, size_t *linear_size, int timeout_ms);
   bool queued = false;
+  void publish_frame();
 
 private:
   int fd;

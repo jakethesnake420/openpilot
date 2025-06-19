@@ -106,19 +106,19 @@ bool FrameReader::get(int idx, VisionBuf *buf) {
 
 // class VideoDecoder
 
-VideoDecoder::VideoDecoder() {
+FFmpegVideoDecoder::FFmpegVideoDecoder() {
   av_frame_ = av_frame_alloc();
   hw_frame_ = av_frame_alloc();
 }
 
-VideoDecoder::~VideoDecoder() {
+FFmpegVideoDecoder::~FFmpegVideoDecoder() {
   if (hw_device_ctx) av_buffer_unref(&hw_device_ctx);
   if (decoder_ctx) avcodec_free_context(&decoder_ctx);
   av_frame_free(&av_frame_);
   av_frame_free(&hw_frame_);
 }
 
-bool VideoDecoder::open(AVCodecParameters *codecpar, bool hw_decoder) {
+bool FFmpegVideoDecoder::open(AVCodecParameters *codecpar, bool hw_decoder) {
   const AVCodec *decoder = avcodec_find_decoder(codecpar->codec_id);
   if (!decoder) return false;
 
@@ -141,7 +141,7 @@ bool VideoDecoder::open(AVCodecParameters *codecpar, bool hw_decoder) {
   return true;
 }
 
-bool VideoDecoder::initHardwareDecoder(AVHWDeviceType hw_device_type) {
+bool FFmpegVideoDecoder::initHardwareDecoder(AVHWDeviceType hw_device_type) {
   const AVCodecHWConfig *config = nullptr;
   for (int i = 0; (config = avcodec_get_hw_config(decoder_ctx->codec, i)) != nullptr; i++) {
     if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX && config->device_type == hw_device_type) {
@@ -167,7 +167,7 @@ bool VideoDecoder::initHardwareDecoder(AVHWDeviceType hw_device_type) {
   return true;
 }
 
-bool VideoDecoder::decode(FrameReader *reader, int idx, VisionBuf *buf) {
+bool FFmpegVideoDecoder::decode(FrameReader *reader, int idx, VisionBuf *buf) {
   int from_idx = idx;
   if (idx != reader->prev_idx + 1) {
     // seeking to the nearest key frame
@@ -202,7 +202,7 @@ bool VideoDecoder::decode(FrameReader *reader, int idx, VisionBuf *buf) {
   return result;
 }
 
-AVFrame *VideoDecoder::decodeFrame(AVPacket *pkt) {
+AVFrame *FFmpegVideoDecoder::decodeFrame(AVPacket *pkt) {
   int ret = avcodec_send_packet(decoder_ctx, pkt);
   if (ret < 0) {
     rError("Error sending a packet for decoding: %d", ret);
@@ -222,7 +222,7 @@ AVFrame *VideoDecoder::decodeFrame(AVPacket *pkt) {
   return (av_frame_->format == hw_pix_fmt) ? hw_frame_ : av_frame_;
 }
 
-bool VideoDecoder::copyBuffer(AVFrame *f, VisionBuf *buf) {
+bool FFmpegVideoDecoder::copyBuffer(AVFrame *f, VisionBuf *buf) {
   if (hw_pix_fmt == HW_PIX_FMT) {
     for (int i = 0; i < height/2; i++) {
       memcpy(buf->y + (i*2 + 0)*buf->stride, f->data[0] + (i*2 + 0)*f->linesize[0], width);

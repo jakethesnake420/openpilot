@@ -214,3 +214,8 @@ int SdeRotator::get_frame(unsigned char **linear_data, size_t *linear_size, int 
 
   return 0;
 }
+
+
+void SdeRotator::publish_frame() {
+  
+}
