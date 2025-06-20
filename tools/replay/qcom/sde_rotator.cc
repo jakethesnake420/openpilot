@@ -24,17 +24,21 @@ static void request_buffers(int fd, v4l2_buf_type buf_type, unsigned int count) 
 }
 
 
-SdeRotator::SdeRotator() {
-  memset(&fmt_cap, 0, sizeof(fmt_cap));
-  memset(&fmt_out, 0, sizeof(fmt_out));
-  memset(&cached_cap_buf, 0, sizeof(cached_cap_buf));
-  fd = HANDLE_EINTR(open("/dev/video2", O_RDWR|O_NONBLOCK));
-  assert(fd >= 0);
-  LOG("opened rotator device fd=%d", fd);
+SdeRotator::SdeRotator() {}
+
+bool SdeRotator::init(const char *dev) {
+  LOGD("Initializing sde_rot device %s", dev);
+  fd = open(dev, O_RDWR, 0);
+  if (fd < 0) {
+    LOGE("failed to open rotator device");
+    return false;
+  }
+  fmt_cap = {}, fmt_out = {}, cached_cap_buf = {};
   pfd = { .fd = fd, .events = POLLIN | POLLRDNORM, .revents = 0 };
   struct v4l2_capability cap;
   memset(&cap, 0, sizeof(cap));
-  checked_ioctl(fd, VIDIOC_QUERYCAP, &cap); // check if this needed
+  checked_ioctl(fd, VIDIOC_QUERYCAP, &cap); // check if this needed.
+  return true;
 }
 
 
@@ -83,6 +87,7 @@ int SdeRotator::config_ubwc_to_nv12_op(int width, int height) {
     }
     vision_buf.free();
   }
+  vision_buf = VisionBuf();
   vision_buf.allocate(fmt_cap.fmt.pix.sizeimage);
   vision_buf.width = width;
   vision_buf.height = height;
@@ -108,21 +113,21 @@ int SdeRotator::config_ubwc_to_nv12_op(int width, int height) {
 
 
 int SdeRotator::cleanup() {
-    int err = 0;
-
-    if (linear_ptr && mapped_size) {
-      err = munmap(linear_ptr, mapped_size);
-      linear_ptr = nullptr;
-      mapped_size = 0;
-    }
-    if (fd >= 0) {
-      err = close(fd);
-      fd = -1;
-    }
-    vision_buf.free();
-    vision_buf = VisionBuf();
-    queued = false;
-    return err;
+  int err = 0;
+  if (linear_ptr && mapped_size) {
+    err = munmap(linear_ptr, mapped_size);
+    linear_ptr = nullptr;
+    mapped_size = 0;
+  }
+  if (fd >= 0) {
+    err = close(fd);
+    fd = -1;
+  }
+  vision_buf.free();
+  vision_buf.~VisionBuf();
+  new (&vision_buf) VisionBuf();
+  queued = false;
+  return err;
 }
 
 /**
@@ -196,6 +201,7 @@ int SdeRotator::get_frame(unsigned char **linear_data, size_t *linear_size, int 
   checked_ioctl(fd, VIDIOC_QUERYBUF, &dqout);
 
   // Only mmap if not already mapped
+  // TODO this is already mmapped by the alloc in VisionBuf
   if (!linear_ptr || mapped_size != dq.length) {
     LOG("mmaping linear buffer, size=%u", dq.length);
     if (linear_ptr && mapped_size)
@@ -217,5 +223,5 @@ int SdeRotator::get_frame(unsigned char **linear_data, size_t *linear_size, int 
 
 
 void SdeRotator::publish_frame() {
-  
+
 }

@@ -8,6 +8,7 @@
 #include "common/util.h"
 #include "third_party/libyuv/include/libyuv.h"
 #include "tools/replay/util.h"
+#include <sys/signalfd.h>
 
 #ifdef __APPLE__
 #define HW_DEVICE_TYPE AV_HWDEVICE_TYPE_VIDEOTOOLBOX
@@ -30,14 +31,14 @@ enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelFormat *
 }
 
 struct DecoderManager {
-  VideoDecoder *acquire(CameraType type, AVCodecParameters *codecpar, bool hw_decoder) {
+  FFmpegVideoDecoder *acquire(CameraType type, AVCodecParameters *codecpar, bool hw_decoder) {
     auto key = std::tuple(type, codecpar->width, codecpar->height);
     std::unique_lock lock(mutex_);
     if (auto it = decoders_.find(key); it != decoders_.end()) {
       return it->second.get();
     }
 
-    auto decoder = std::make_unique<VideoDecoder>();
+    auto decoder = std::make_unique<FFmpegVideoDecoder>();
     if (!decoder->open(codecpar, hw_decoder)) {
       decoder.reset(nullptr);
     }
@@ -46,7 +47,7 @@ struct DecoderManager {
   }
 
   std::mutex mutex_;
-  std::map<std::tuple<CameraType, int, int>, std::unique_ptr<VideoDecoder>> decoders_;
+  std::map<std::tuple<CameraType, int, int>, std::unique_ptr<FFmpegVideoDecoder>> decoders_;
 };
 
 DecoderManager decoder_manager;
@@ -69,6 +70,7 @@ bool FrameReader::load(CameraType type, const std::string &url, bool no_hw_decod
       return false;
     }
   }
+  rInfo("Loading video from local file: %s", local_file_path.c_str());
   return loadFromFile(type, local_file_path, no_hw_decoder, abort);
 }
 
@@ -237,5 +239,42 @@ bool FFmpegVideoDecoder::copyBuffer(AVFrame *f, VisionBuf *buf) {
                        buf->uv, buf->stride,
                        width, height);
   }
+  return true;
+}
+
+QcomVideoDecoder::QcomVideoDecoder() {
+}
+
+QcomVideoDecoder::~QcomVideoDecoder() {
+
+}
+
+
+bool QcomVideoDecoder::open(AVCodecParameters *codecpar, bool hw_decoder) {
+  return true;
+}
+
+
+bool QcomVideoDecoder::decode(FrameReader *reader, int idx, VisionBuf *buf) {
+  return true;
+}
+
+bool QcomVideoDecoder::decodeFrame(AVPacket *pkt, VisionBuf *buf) {
+  return true;
+}
+
+// Decompress from NV12 UBWC to NV12
+bool QcomVideoDecoder::decompressFrame(VisionBuf *buf) {
+  rotator.put_frame(buf);
+  return true;
+}
+
+
+
+bool QcomVideoDecoder::initHardwareDecoder(AVHWDeviceType hw_device_type) {
+  msm_vidc.init();
+
+  rotator.init();
+  rotator.config_ubwc_to_nv12_op(this->width, this->height);
   return true;
 }

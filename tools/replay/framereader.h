@@ -6,6 +6,9 @@
 #include "msgq/visionipc/visionbuf.h"
 #include "tools/replay/filereader.h"
 #include "tools/replay/util.h"
+#include "tools/replay/qcom/sde_rotator.h"
+
+#include "tools/replay/qcom/decoder.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -63,13 +66,20 @@ private:
   AVBufferRef *hw_device_ctx = nullptr;
 };
 
-// class QcomVideoDecoder : public VideoDecoder {
-// public:
-//   QcomVideoDecoder();
-//   ~QcomVideoDecoder() override;
-//   bool open(AVCodecParameters *codecpar, bool hw_decoder) override;
-//   bool decode(FrameReader *reader, int idx, VisionBuf *buf) override;
+class QcomVideoDecoder : public VideoDecoder {
+public:
+  QcomVideoDecoder();
+  ~QcomVideoDecoder() override;
+  bool open(AVCodecParameters *codecpar, bool hw_decoder) override;
+  bool decode(FrameReader *reader, int idx, VisionBuf *buf) override;
 
-// private:
-//   // Add Qualcomm-specific members here if needed
-// };
+private:
+  bool initHardwareDecoder(AVHWDeviceType hw_device_type);
+  bool decompressFrame(VisionBuf *buf);
+  bool decodeFrame(AVPacket *pkt, VisionBuf *buf);
+  SdeRotator rotator = SdeRotator();
+  MsmVidc msm_vidc = MsmVidc();
+  //int fd = 0;
+  //int sigfd = 0;
+};
+

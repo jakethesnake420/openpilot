@@ -14,6 +14,8 @@
 #include "common/swaglog.h"
 #include "msgq/visionipc/visionbuf.h"
 
+#define ROTATOR_DEVICE "/dev/video2"
+
 
 class SdeRotator {
 public:
@@ -24,13 +26,14 @@ public:
   int get_frame(unsigned char **linear_data, size_t *linear_size, int timeout_ms);
   bool queued = false;
   void publish_frame();
+  bool init(const char *dev = ROTATOR_DEVICE);
 
 private:
   int fd;
   void *linear_ptr;
   size_t mapped_size;
-  struct v4l2_format fmt_cap, fmt_out;
-  struct v4l2_buffer cached_cap_buf;
+  struct v4l2_format fmt_cap = {0}, fmt_out = {0};
+  struct v4l2_buffer cached_cap_buf = {0};
   VisionBuf vision_buf;
   struct pollfd pfd;
 
