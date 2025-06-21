@@ -31,14 +31,14 @@ enum AVPixelFormat get_hw_format(AVCodecContext *ctx, const enum AVPixelFormat *
 }
 
 struct DecoderManager {
-  FFmpegVideoDecoder *acquire(CameraType type, AVCodecParameters *codecpar, bool hw_decoder) {
+  QcomVideoDecoder *acquire(CameraType type, AVCodecParameters *codecpar, bool hw_decoder) {
     auto key = std::tuple(type, codecpar->width, codecpar->height);
     std::unique_lock lock(mutex_);
     if (auto it = decoders_.find(key); it != decoders_.end()) {
       return it->second.get();
     }
 
-    auto decoder = std::make_unique<FFmpegVideoDecoder>();
+    auto decoder = std::make_unique<QcomVideoDecoder>();
     if (!decoder->open(codecpar, hw_decoder)) {
       decoder.reset(nullptr);
     }
@@ -47,7 +47,7 @@ struct DecoderManager {
   }
 
   std::mutex mutex_;
-  std::map<std::tuple<CameraType, int, int>, std::unique_ptr<FFmpegVideoDecoder>> decoders_;
+  std::map<std::tuple<CameraType, int, int>, std::unique_ptr<QcomVideoDecoder>> decoders_;
 };
 
 DecoderManager decoder_manager;
@@ -251,30 +251,61 @@ QcomVideoDecoder::~QcomVideoDecoder() {
 
 
 bool QcomVideoDecoder::open(AVCodecParameters *codecpar, bool hw_decoder) {
+  assert(hw_decoder); // must use hardware decoder on Qcom devices
+  assert(codecpar->codec_id == AV_CODEC_ID_HEVC); // currently only HEVC is supported
+  width = codecpar->width + 31 & ~31; // align to 32 pixels
+  height = codecpar->height + 15 & ~15; // align to 16 pixels
+
+  msm_vidc.init(VIDEO_DEVICE, width, height, V4L2_PIX_FMT_HEVC);
+  rotator.init();
+  rotator.config_ubwc_to_nv12_op(width, height);
   return true;
 }
 
 
 bool QcomVideoDecoder::decode(FrameReader *reader, int idx, VisionBuf *buf) {
-  return true;
+  int from_idx = idx;
+  if (idx != reader->prev_idx + 1) {
+    // seeking to the nearest key frame
+    for (int i = idx; i >= 0; --i) {
+      if (reader->packets_info[i].flags & AV_PKT_FLAG_KEY) {
+        from_idx = i;
+        break;
+      }
+    }
+
+    auto pos = reader->packets_info[from_idx].pos;
+    int ret = avformat_seek_file(reader->input_ctx, 0, pos, pos, pos, AVSEEK_FLAG_BYTE);
+    if (ret < 0) {
+      rError("Failed to seek to byte position %lld: %d", pos, AVERROR(ret));
+      return false;
+    }
+    LOGE("BUFFER FLUSH NOT IMPLEMENTED YET");
+    //avcodec_flush_buffers(decoder_ctx);
+  }
+  reader->prev_idx = idx;
+  bool result = false;
+  AVPacket pkt;
+  for (int i = from_idx; i <= idx; ++i) {
+    if (av_read_frame(reader->input_ctx, &pkt) == 0) {
+      // print pkt pts, dts, size, flags, ect..
+      LOGD("pkt pts=%" PRId64 " dts=%" PRId64 " size=%d flags=%d", pkt.pts, pkt.dts, pkt.size, pkt.flags);
+      result = decodeFrame(&pkt, buf) && (i == idx);
+      av_packet_unref(&pkt);
+    }
+  }
+  return result;
 }
 
 bool QcomVideoDecoder::decodeFrame(AVPacket *pkt, VisionBuf *buf) {
+  msm_vidc.decodeFrame(pkt, buf);
+  //sde_rotator.decompressFrame(buf);
+
   return true;
 }
 
 // Decompress from NV12 UBWC to NV12
 bool QcomVideoDecoder::decompressFrame(VisionBuf *buf) {
   rotator.put_frame(buf);
-  return true;
-}
-
-
-
-bool QcomVideoDecoder::initHardwareDecoder(AVHWDeviceType hw_device_type) {
-  msm_vidc.init();
-
-  rotator.init();
-  rotator.config_ubwc_to_nv12_op(this->width, this->height);
   return true;
 }

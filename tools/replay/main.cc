@@ -66,6 +66,7 @@ bool parseArgs(int argc, char *argv[], ReplayConfig &config) {
       {"no-hw-decoder", no_argument, nullptr, 0},
       {"no-vipc", no_argument, nullptr, 0},
       {"all", no_argument, nullptr, 0},
+      {"no-ui", no_argument, nullptr, 0},
       {"help", no_argument, nullptr, 'h'},
       {nullptr, 0, nullptr, 0},  // Terminating entry
   };
@@ -79,6 +80,7 @@ bool parseArgs(int argc, char *argv[], ReplayConfig &config) {
       {"no-hw-decoder", REPLAY_FLAG_NO_HW_DECODER},
       {"no-vipc", REPLAY_FLAG_NO_VIPC},
       {"all", REPLAY_FLAG_ALL_SERVICES},
+      {"no-ui", REPLAY_FLAG_NO_UI},
   };
 
   if (argc == 1) {
@@ -149,7 +151,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  ConsoleUI console_ui(&replay);
+  ConsoleUI console_ui(&replay, !(config.flags & REPLAY_FLAG_NO_UI));
   replay.start(config.start_seconds);
   return console_ui.exec();
 }

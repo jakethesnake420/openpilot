@@ -88,7 +88,7 @@ int SdeRotator::config_ubwc_to_nv12_op(int width, int height) {
     vision_buf.free();
   }
   vision_buf = VisionBuf();
-  vision_buf.allocate(fmt_cap.fmt.pix.sizeimage);
+  vision_buf.allocate_no_cache(fmt_cap.fmt.pix.sizeimage);
   vision_buf.width = width;
   vision_buf.height = height;
 
