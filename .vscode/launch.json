@@ -16,12 +16,13 @@
       "type": "pickString",
       "description": "Select the process to debug",
       "options": [
-        "selfdrive/ui/ui"
+        "selfdrive/ui/ui",
+        "tools/replay/replay"
       ]
     },
     {
       "id": "args",
-      "description": "Arguments to pass to the process",
+      "description": "Arguments to pass to the process (enter as a JSON array, e.g. [\"--debug\", \"--no-ui\"])",
       "type": "promptString"
     }
   ],
@@ -41,6 +42,17 @@
       "request": "launch",
       "program": "${workspaceFolder}/${input:cpp_process}",
       "cwd": "${workspaceFolder}",
+      "args": ["--demo", "--no-ui"],
+      "environment": [
+        {
+          "name": "COMMA_CACHE",
+          "value": "/data/cache"
+        },
+        {
+          "name": "LOGPRINT",
+          "value": "debug"
+        }
+      ]
     }
   ]
 }

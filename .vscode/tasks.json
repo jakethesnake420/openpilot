@@ -1,0 +1,33 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Build with SCons (all cores)",
+			"command": "scons -j$(nproc)",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [],
+			"isBackground": false,
+			"presentation": {
+				"reveal": "always"
+			}
+		},
+		{
+			"type": "shell",
+			"label": "strace Replay",
+			"command": "strace -Tfe trace=ioctl ./tools/replay/replay --demo --no-ui",
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+			"problemMatcher": [],
+			"isBackground": false,
+			"presentation": {
+				"reveal": "always"
+			}
+		}
+	]
+}
