@@ -21,21 +21,27 @@ class SdeRotator {
 public:
   SdeRotator();
   ~SdeRotator();
-  int config_ubwc_to_nv12_op(int width, int height);
-  int put_frame(VisionBuf *input_frame);
-  int get_frame(unsigned char **linear_data, size_t *linear_size, int timeout_ms);
+  int configUBWCtoNV12(int width, int height);
+  int configUBWCtoNV12WithOutputBuf(int width, int height, VisionBuf *output_buf);
+  int putFrame(VisionBuf *ubwc);
+  int putFrameWithOutputBuf(VisionBuf *ubwc, VisionBuf *output_buf);
+  VisionBuf* getFrame(int timeout_ms);
+  VisionBuf* getFrameExternal(int timeout_ms);
   bool queued = false;
-  void publish_frame();
   bool init(const char *dev = ROTATOR_DEVICE);
+  int cleanup();
+  int saveFrame(const char* filename, bool append);
+  int convert_ubwc_to_linear(int out_buf_fd,
+                          int width, int height,
+                          unsigned char **linear_data, size_t *linear_size);
+  void convertStride(VisionBuf *rotated_buf, VisionBuf *user_buf);
+
 
 private:
   int fd;
-  void *linear_ptr;
-  size_t mapped_size;
   struct v4l2_format fmt_cap = {0}, fmt_out = {0};
-  struct v4l2_buffer cached_cap_buf = {0};
-  VisionBuf vision_buf;
+  VisionBuf cap_buf;
   struct pollfd pfd;
-
-  int cleanup();
+  struct v4l2_buffer cap_desc{};       // cached QUERYBUF result
+  VisionBuf *external_output_buf;
 };

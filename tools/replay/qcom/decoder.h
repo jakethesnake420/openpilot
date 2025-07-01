@@ -7,19 +7,25 @@
 #include <limits.h>
 #include <poll.h>
 #include <list>
+#include "third_party/linux/include/media/msm_vidc.h"
 
 #include "msgq/visionipc/visionbuf.h"
+#include "sde_rotator.h"
 
 // av includes
 //#include <libavformat/avformat.h>
 // #include <libavutil/avutil.h>
 extern "C" {
-#include <libavcodec/avcodec.h>
+	#include <libavcodec/avcodec.h>
+	#include <libavformat/avformat.h>
 }
 
 #define VIDEO_DEVICE "/dev/video32"
-#define OUTPUT_BUFFER_COUNT 4
-#define CAPTURE_BUFFER_COUNT 4
+#define OUTPUT_BUFFER_COUNT 	8
+#define CAPTURE_BUFFER_COUNT 	4
+#define CAP_PLANES 						2
+#define OUT_PLANES						1
+#define FPS 									20
 
 #define TIMESTAMP_NONE	((uint64_t)-1)
 #define V4L2_QCOM_BUF_TIMESTAMP_INVALID		0x00080000
@@ -121,7 +127,8 @@ enum v4l2_mpeg_vidc_video_dpb_color_format {
 	V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_UBWC = 1,
 	V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_TP10_UBWC = 2
 };
-
+#define V4L2_QCOM_CMD_FLUSH_CAPTURE (1 << 1)
+#define V4L2_QCOM_CMD_FLUSH      (4)
 class MsmVidc {
   public:
     MsmVidc();
@@ -129,13 +136,17 @@ class MsmVidc {
     bool init(const char* dev,
 							size_t width, size_t height,
 							uint64_t codec);
-		bool decodeFrame(AVPacket *pkt, VisionBuf *buf);
-
+		VisionBuf* decodeFrame(AVPacket *pkt, VisionBuf *buf);
+		AVFormatContext *avctx = nullptr;
     int fd = 0;
     int sigfd = 0;
     uint64_t c = V4L2_PIX_FMT_HEVC;
   private:
 		bool initialized = false;
+		bool reconfigure_pending = false;
+		bool need_more_frames = false;
+		bool frame_ready = false;
+		VisionBuf *current_output_buf = nullptr;
     bool setupOutput();
     bool subscribeEvents();
     bool setPlaneFormat(v4l2_buf_type type, uint32_t fourcc);
@@ -150,6 +161,12 @@ class MsmVidc {
 		bool sendEOS();
 		bool sendPacket(int buf_index, AVPacket *pkt);
 		int getBufferUnlocked();
+		int handleSignal();
+		VisionBuf* handleCapture();
+		bool handleOutput();
+		bool handleEvent();
+
+		SdeRotator rotator; // For converting UBWC to NV12 format.
 
     size_t w = 1928, h = 1208;
 
@@ -161,7 +178,7 @@ class MsmVidc {
     VisionBuf ext_buf;
     VisionBuf cap_bufs[CAPTURE_BUFFER_COUNT]; // Capture (output) buffers, one for each frame.
 
-    int cap_planes_count = 1;
+    //int cap_planes_count = CAP_PLANES;
     size_t cap_plane_off[CAPTURE_BUFFER_COUNT] = {0};
     size_t cap_plane_stride[CAPTURE_BUFFER_COUNT] = {0};
     bool cap_buf_flag[CAPTURE_BUFFER_COUNT] = {false};
@@ -177,9 +194,15 @@ class MsmVidc {
 
 
 		// For tracking timestamps of frames.
-		std::list<uint64_t> pending_ts_list;
-		uint64_t cap_last_pts = 0;
-		uint64_t pts_dts_delta = 0;
+		struct ts_entry {
+			uint64_t pts;
+			uint64_t dts;
+			uint64_t duration;
+			uint64_t base;
+		};
+		std::list<ts_entry> pending_ts_list;
+		uint64_t cap_last_pts = TIMESTAMP_NONE;
+		uint64_t pts_dts_delta = TIMESTAMP_NONE;
 
     const int subscriptions[8] = {
       V4L2_EVENT_MSM_VIDC_FLUSH_DONE,

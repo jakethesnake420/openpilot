@@ -59,7 +59,9 @@ ExitHandler do_exit;
 
 }  // namespace
 
-ConsoleUI::ConsoleUI(Replay *replay) : replay(replay), sm({"carState", "liveParameters"}) {
+ConsoleUI::ConsoleUI(Replay *replay, bool enable_ui)
+    : replay(replay), sm({"carState", "liveParameters"}), enable_ui(enable_ui) {
+  if (!enable_ui) return;
   // Initialize curses
   initscr();
   clear();
@@ -95,12 +97,14 @@ ConsoleUI::ConsoleUI(Replay *replay) : replay(replay), sm({"carState", "livePara
 }
 
 ConsoleUI::~ConsoleUI() {
+  if (!enable_ui) return;
   installDownloadProgressHandler(nullptr);
   installMessageHandler(nullptr);
   endwin();
 }
 
 void ConsoleUI::initWindows() {
+  if (!enable_ui) return;
   getmaxyx(stdscr, max_height, max_width);
   w.fill(nullptr);
   w[Win::Title] = newwin(1, max_width, 0, 0);
@@ -133,6 +137,7 @@ void ConsoleUI::initWindows() {
 }
 
 void ConsoleUI::updateSize() {
+  if (!enable_ui) return;
   if (is_term_resized(max_height, max_width)) {
     for (auto win : w) {
       if (win) delwin(win);
@@ -146,6 +151,7 @@ void ConsoleUI::updateSize() {
 }
 
 void ConsoleUI::updateStatus() {
+  if (!enable_ui) return;
   auto write_item = [this](int y, int x, const char *key, const std::string &value, const std::string &unit,
                            bool bold = false, Color color = Color::BrightWhite) {
     auto win = w[Win::CarState];
@@ -165,8 +171,9 @@ void ConsoleUI::updateStatus() {
   write_item(0, 0, "STATUS:    ", status_str, "      ", false, status_color);
   auto cur_ts = replay->routeDateTime() + (int)replay->currentSeconds();
   char *time_string = ctime(&cur_ts);
+  std::string time_str = (time_string != nullptr) ? std::string(time_string) : std::string("<invalid time>");
   std::string current_segment = " - " + std::to_string((int)(replay->currentSeconds() / 60));
-  write_item(0, 25, "TIME:  ", time_string, current_segment, true);
+  write_item(0, 25, "TIME:  ", time_str, current_segment, true);
 
   auto p = sm["liveParameters"].getLiveParameters();
   write_item(1, 0, "STIFFNESS: ", util::string_format("%.2f %%", p.getStiffnessFactor() * 100), "  ");
@@ -179,6 +186,7 @@ void ConsoleUI::updateStatus() {
 }
 
 void ConsoleUI::displayHelp() {
+  if (!enable_ui) return;
   for (int i = 0; i < std::size(keyboard_shortcuts); ++i) {
     wmove(w[Win::Help], i * 2, 0);
     for (auto &[key, desc] : keyboard_shortcuts[i]) {
@@ -192,6 +200,7 @@ void ConsoleUI::displayHelp() {
 }
 
 void ConsoleUI::displayTimelineDesc() {
+  if (!enable_ui) return;
   std::tuple<Color, const char *, bool> indicators[]{
       {Color::Engaged, " Engaged ", false},
       {Color::Disengaged, " Disengaged ", false},
@@ -207,6 +216,7 @@ void ConsoleUI::displayTimelineDesc() {
 }
 
 void ConsoleUI::logMessage(ReplyMsgType type, const std::string &msg) {
+  if (!enable_ui) return;
   if (auto win = w[Win::Log]) {
     Color color = Color::Default;
     if (type == ReplyMsgType::Debug) {
@@ -222,6 +232,7 @@ void ConsoleUI::logMessage(ReplyMsgType type, const std::string &msg) {
 }
 
 void ConsoleUI::updateProgressBar() {
+  if (!enable_ui) return;
   werase(w[Win::DownloadBar]);
   if (download_success && progress_cur < progress_total) {
     const int width = 35;
@@ -234,6 +245,7 @@ void ConsoleUI::updateProgressBar() {
 }
 
 void ConsoleUI::updateSummary() {
+  if (!enable_ui) return;
   const auto &route = replay->route();
   mvwprintw(w[Win::Stats], 0, 0, "Route: %s, %lu segments", route.name().c_str(), route.segments().size());
   mvwprintw(w[Win::Stats], 1, 0, "Car Fingerprint: %s", replay->carFingerprint().c_str());
@@ -241,6 +253,7 @@ void ConsoleUI::updateSummary() {
 }
 
 void ConsoleUI::updateTimeline() {
+  if (!enable_ui) return;
   auto win = w[Win::Timeline];
   int width = getmaxx(win);
   werase(win);
@@ -282,6 +295,7 @@ void ConsoleUI::pauseReplay(bool pause) {
 }
 
 void ConsoleUI::handleKey(char c) {
+  if (!enable_ui) return;
   if (c == '\n') {
     // pause the replay and blocking getchar()
     pauseReplay(true);
@@ -350,6 +364,13 @@ void ConsoleUI::handleKey(char c) {
 }
 
 int ConsoleUI::exec() {
+  if (!enable_ui) {
+    // If UI is disabled, just run the replay logic without UI
+    while (!do_exit) {
+      util::sleep_for(10); // Sleep to avoid busy loop
+    }
+    return 0;
+  }
   RateKeeper rk("Replay", 20);
 
   while (!do_exit) {

@@ -50,6 +50,26 @@ struct DecoderManager {
   std::map<std::tuple<CameraType, int, int>, std::unique_ptr<QcomVideoDecoder>> decoders_;
 };
 
+// struct DecoderManager {
+//   FFmpegVideoDecoder *acquire(CameraType type, AVCodecParameters *codecpar, bool hw_decoder) {
+//     auto key = std::tuple(type, codecpar->width, codecpar->height);
+//     std::unique_lock lock(mutex_);
+//     if (auto it = decoders_.find(key); it != decoders_.end()) {
+//       return it->second.get();
+//     }
+
+//     auto decoder = std::make_unique<FFmpegVideoDecoder>();
+//     if (!decoder->open(codecpar, hw_decoder)) {
+//       decoder.reset(nullptr);
+//     }
+//     decoders_[key] = std::move(decoder);
+//     return decoders_[key].get();
+//   }
+
+//   std::mutex mutex_;
+//   std::map<std::tuple<CameraType, int, int>, std::unique_ptr<FFmpegVideoDecoder>> decoders_;
+// };
+
 DecoderManager decoder_manager;
 
 }  // namespace
@@ -253,15 +273,30 @@ QcomVideoDecoder::~QcomVideoDecoder() {
 bool QcomVideoDecoder::open(AVCodecParameters *codecpar, bool hw_decoder) {
   assert(hw_decoder); // must use hardware decoder on Qcom devices
   assert(codecpar->codec_id == AV_CODEC_ID_HEVC); // currently only HEVC is supported
-  width = codecpar->width + 31 & ~31; // align to 32 pixels
-  height = codecpar->height + 15 & ~15; // align to 16 pixels
-
+  // width = codecpar->width + 31 & ~31; // align to 32 pixels
+  // height = codecpar->height + 15 & ~15; // align to 16 pixels
+  width = codecpar->width;
+  height = codecpar->height;
   msm_vidc.init(VIDEO_DEVICE, width, height, V4L2_PIX_FMT_HEVC);
-  rotator.init();
-  rotator.config_ubwc_to_nv12_op(width, height);
+  // rotator.init();
+  // rotator.configUBWCtoNV12(width, height);
   return true;
 }
 
+static inline void copyLinearBufferProps(VisionBuf       *dst,
+                                         const VisionBuf *src)
+{
+  dst->fd        = src->fd;
+  dst->addr      = src->addr;
+  dst->len       = src->len;
+  dst->mmap_len  = src->mmap_len;
+  dst->width     = src->width;
+  dst->height    = src->height;
+  dst->stride    = src->stride;
+  dst->uv_offset = src->uv_offset;
+  dst->y         = src->y;
+  dst->uv        = src->uv;
+}
 
 bool QcomVideoDecoder::decode(FrameReader *reader, int idx, VisionBuf *buf) {
   int from_idx = idx;
@@ -286,10 +321,11 @@ bool QcomVideoDecoder::decode(FrameReader *reader, int idx, VisionBuf *buf) {
   reader->prev_idx = idx;
   bool result = false;
   AVPacket pkt;
+  msm_vidc.avctx = reader->input_ctx;
   for (int i = from_idx; i <= idx; ++i) {
     if (av_read_frame(reader->input_ctx, &pkt) == 0) {
       // print pkt pts, dts, size, flags, ect..
-      LOGD("pkt pts=%" PRId64 " dts=%" PRId64 " size=%d flags=%d", pkt.pts, pkt.dts, pkt.size, pkt.flags);
+      //LOGD("pkt pts=%" PRId64 " dts=%" PRId64 " size=%d flags=%d", pkt.pts, pkt.dts, pkt.size, pkt.flags);
       result = decodeFrame(&pkt, buf) && (i == idx);
       av_packet_unref(&pkt);
     }
@@ -298,14 +334,25 @@ bool QcomVideoDecoder::decode(FrameReader *reader, int idx, VisionBuf *buf) {
 }
 
 bool QcomVideoDecoder::decodeFrame(AVPacket *pkt, VisionBuf *buf) {
-  msm_vidc.decodeFrame(pkt, buf);
-  //sde_rotator.decompressFrame(buf);
+  VisionBuf* nv12_frame = msm_vidc.decodeFrame(pkt, buf);
+  if (!nv12_frame) {
+    rError("Failed to decode frame");
+    return false;
+  }
+  copyLinearBufferProps(buf, nv12_frame);
 
   return true;
 }
+
 
 // Decompress from NV12 UBWC to NV12
-bool QcomVideoDecoder::decompressFrame(VisionBuf *buf) {
-  rotator.put_frame(buf);
-  return true;
+VisionBuf* QcomVideoDecoder::decompressFrame(VisionBuf *ubwc_buf) {
+  rotator.putFrame(ubwc_buf);
+  int timeout_ms = 10;
+  VisionBuf *lin = rotator.getFrame(timeout_ms);
+  if (!lin) return nullptr;          // handle timeout / error
+
+  //rotator.saveFrame("frame.yuv"); // save the decompressed frame to a file
+  return lin; // return the decompressed frame
 }
+

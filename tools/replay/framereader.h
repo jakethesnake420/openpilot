@@ -74,12 +74,12 @@ public:
   bool decode(FrameReader *reader, int idx, VisionBuf *buf) override;
 private:
   //bool initHardwareDecoder(AVHWDeviceType hw_device_type);
-  bool decompressFrame(VisionBuf *buf);
+  VisionBuf* decompressFrame(VisionBuf *buf);
   bool decodeFrame(AVPacket *pkt, VisionBuf *buf);
 
   SdeRotator rotator = SdeRotator();
   MsmVidc msm_vidc = MsmVidc();
-  
+
   //int fd = 0;
   //int sigfd = 0;
 };

@@ -9,7 +9,7 @@
 
 class ConsoleUI {
 public:
-  ConsoleUI(Replay *replay);
+  ConsoleUI(Replay *replay, bool enable_ui = true);
   ~ConsoleUI();
   int exec();
   inline static const std::array speed_array = {0.2f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f};
@@ -40,4 +40,5 @@ private:
   uint64_t progress_cur = 0;
   uint64_t progress_total = 0;
   bool download_success = false;
+  bool enable_ui = true;
 };
