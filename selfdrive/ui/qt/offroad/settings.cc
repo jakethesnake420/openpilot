@@ -40,42 +40,48 @@ TogglesPanel::TogglesPanel(SettingsWindow *parent) : ListWidget(parent) {
       "../assets/icons/disengage_on_accelerator.svg",
       false,
     },
-    
+
     {
       "BlendedACC",
       tr("Blended Acc (Experimental)"),
       tr("Blend stock MRCC and Experimental Mode longitudinal control."),
       "../assets/offroad/icon_openpilot.png",
+      false,
     },
     {
       "TorqueInterceptorEnabled",
       tr("Torque Interceptor Installed"),
       tr("Enable the torque interceptor to control the steering wheel."),
       "../assets/offroad/icon_openpilot.png",
+      true,
     },
     {
       "RadarInterceptorEnabled",
       tr("Radar Interceptor Installed"),
       tr("Enable if you have installed the radar Iterceptor."),
       "../assets/offroad/icon_openpilot.png",
+      true,
     },
     {
       "NoMRCC",
       tr("Car Does not have stock MRCC"),
       tr("Enable if your car does not have stock MRCC."),
       "../assets/offroad/icon_openpilot.png",
+      true,
     },
     {
       "NoFSC",
       tr("Car Does not have stock FSC"),
       tr("Enable if your car does not have stock FSC."),
       "../assets/offroad/icon_openpilot.png",
+      true,
     },
     {
       "ManualTransmission",
       tr("Manual Transmission"),
       tr("Enable if your is a manual."),
       "../assets/offroad/icon_openpilot.png",
+      true,
     },
     {
       "IsLdwEnabled",
