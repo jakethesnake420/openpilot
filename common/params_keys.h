@@ -130,10 +130,10 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"Version", {PERSISTENT, STRING}},
 
     // MoreTorque
-    {"TorqueInterceptorEnabled", PERSISTENT},
-    {"RadarInterceptorEnabled", PERSISTENT},
-    {"NoMRCC", PERSISTENT},
-    {"NoFSC", PERSISTENT},
-    {"BlendedACC", PERSISTENT},
-    {"ManualTransmission", PERSISTENT},
+    {"TorqueInterceptorEnabled", {PERSISTENT, BOOL, "1"}},
+    {"RadarInterceptorEnabled", {PERSISTENT, BOOL, "0"}},
+    {"NoMRCC", {PERSISTENT, BOOL, "0"}},
+    {"NoFSC", {PERSISTENT, BOOL, "0"}},
+    {"BlendedACC", {PERSISTENT, BOOL, "0"}},
+    {"ManualTransmission", {PERSISTENT, BOOL, "0"}},
 };
